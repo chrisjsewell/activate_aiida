@@ -36,6 +36,8 @@ activate_aiida () {
     create_missing=$(boolean "$create_missing")
     import_nodes=$(boolean "$import_nodes")
 
+    echo "parsed args: -c $create_missing -i $import_nodes $yaml_file"
+    
     # NB: if you are using the echo command, be sure to use the -e flag to allow backslash escapes.
     local COLORRED='\033[0;31m'
     local COLORORANGE='\033[0;33m'
