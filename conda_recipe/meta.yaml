@@ -1,5 +1,5 @@
 {% set name = "activate-aiida" %}
-{% set version = "0.2.1" %}
+{% set version = "0.2.2" %}
 
 package:
   name: "{{ name|lower }}"
@@ -12,7 +12,7 @@ source:
   #  `openssl sha256 <file name>`.
   # You may need the openssl package, available on conda-forge
   #  `conda install openssl -c conda-forge`
-  sha256: 6811e1a36086f07f4967e5d7101371eba55cbcecdac6d74ab3dcc63eb4cd4105
+  sha256: 2b6319ea4f3a7b56ec3fe723564cf48b1023eb0f242df07525a418774d539f05
 
 build:
   number: 0

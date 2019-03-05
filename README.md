@@ -28,6 +28,7 @@ name: aiida_0_12_2_190305
 channels:
     - conda-forge
     - cjs14
+    - bioconda
     - defaults
 dependencies:
     - aiida-core ==0.12.2
@@ -42,7 +43,7 @@ dependencies:
 aiida_environment.yaml:
 
 ```yaml
-conda_env: aiida_0_12_2_190305
+conda_env: aiida_0_12_2_activate
 aiida_version: 0.12
 aiida_path: /Users/cjs14/GitHub/aiida-cjs-working/databases/aiida/
 db_pgsql:
@@ -69,6 +70,7 @@ Then run:
 
 ```console
 >> conda env create --file=conda_environment.yaml
+>> conda activate aiida_0_12_2_activate
 >> source activate-aiida -c -i aiida_environment.yaml
 ```
 

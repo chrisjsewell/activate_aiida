@@ -8,6 +8,18 @@ if [ $_ == $0 ]; then
     exit
 fi
 
+function boolean() {
+  case $1 in
+    True) echo true ;;
+    False) echo false ;;
+    TRUE) echo true ;;
+    FALSE) echo false ;;
+    true) echo true ;;
+    false) echo false ;;
+    *) echo "Err: Unknown boolean value \"$1\"" 1>&2; exit 1 ;;
+   esac
+}
+
 activate_aiida () {
     # echo "hi1"
     local args=$(read-aiida-args "$@")
@@ -20,6 +32,9 @@ activate_aiida () {
     local create_missing
     local import_nodes
     IFS=',' read -r yaml_file create_missing import_nodes <<< "$args"
+
+    create_missing=$(boolean "$create_missing")
+    import_nodes=$(boolean "$import_nodes")
 
     # NB: if you are using the echo command, be sure to use the -e flag to allow backslash escapes.
     local COLORRED='\033[0;31m'
