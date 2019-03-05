@@ -36,7 +36,7 @@ test:
     - activate_aiida.parse_args
     - activate_aiida.read_config
   commands:
-    -   --test
+    - read-aiida-config --test
     - source activate-aiida --help
 
 about:
