@@ -1,0 +1,52 @@
+{% set name = "activate-aiida" %}
+{% set version = "0.2.0" %}
+
+package:
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
+
+source:
+  # created by `python setup.py sdist`
+  url: https://github.com/chrisjsewell/{{ name }}/releases/download/{{ version }}/{{ version }}.tar.gz
+  # sha256 is the prefered checksum -- you can get it for a file with:
+  #  `openssl sha256 <file name>`.
+  # You may need the openssl package, available on conda-forge
+  #  `conda install openssl -c conda-forge`
+  sha256: bb2aa6085f27bf9276742cec1bcf7a88c5fc7da5dd93f31972608f7c78b27cd1
+
+build:
+  number: 0
+  noarch: python
+  skip: True  # [win]
+  script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed -vv "
+
+requirements:
+  host:
+    - pip
+    - python
+    - setuptools
+  run:
+    - python
+    - ruamel.yaml
+    - jsonschema
+
+test:
+  imports:
+    - activate_aiida
+    - activate_aiida.parse_args
+    - activate_aiida.read_config
+  commands:
+    - source activate-aiida --help
+
+about:
+  home: https://github.com/chrisjsewell/activate_aiida
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  summary: a package to activate an aiida environment, from a yaml config file
+  doc_url: https://github.com/chrisjsewell/activate_aiida
+  # dev_url: https://github.com/chrisjsewell/activate_aiida
+
+extra:
+  recipe-maintainers:
+    - chrisjsewell
