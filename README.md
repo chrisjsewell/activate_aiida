@@ -1,3 +1,5 @@
+[![Anaconda-Server Badge](https://anaconda.org/cjs14/activate-aiida/badges/version.svg)](https://anaconda.org/cjs14/activate-aiida)
+
 # Setting Up AiiDA Environment
 
 This package is designed to achieve the following
@@ -34,6 +36,7 @@ dependencies:
     - aiida-crystal17 =0.4
     - aiida-quantumespresso ==2.1.1a2
     - jupyter =1.0
+    - activate-aiida
 ```
 
 aiida_environment.yaml:
@@ -62,11 +65,11 @@ git_branches:
     branch: master
 ```
 
-The run:
+Then run:
 
 ```console
 >> conda env create --file=conda_environment.yaml
->> source activate-aiida -c -i -p aiida_environment.yaml
+>> source activate-aiida -c -i aiida_environment.yaml
 ```
 
 ## Development Notes
