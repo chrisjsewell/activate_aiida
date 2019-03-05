@@ -130,6 +130,9 @@ def run(sys_args=None):
 
     fpath = sys_args[0]
 
+    if fpath == "--test":
+        return
+
     if not os.path.exists(fpath):
         sys.stderr.write(
             "{COLORRED}ERROR: could not find path {fpath}{COLORNONE}\n"
