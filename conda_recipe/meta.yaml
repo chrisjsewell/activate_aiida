@@ -1,5 +1,5 @@
 {% set name = "activate-aiida" %}
-{% set version = "0.2.3" %}
+{% set version = "0.2.4" %}
 
 package:
   name: "{{ name|lower }}"
@@ -12,10 +12,13 @@ source:
   #  `openssl sha256 <file name>`.
   # You may need the openssl package, available on conda-forge
   #  `conda install openssl -c conda-forge`
-  sha256: ef6f36b29aee77daad0d574ab607f5d8737fc98bcb154b9effd672bbe5d0307e
+  sha256: 88401f259aa8858782ef62d72a899cc224fbe133b6fbe862d03cef85c3b02cfe
 
 build:
   number: 0
+  entry_points:
+    - read-aiida-args = activate_aiida.parse_args:run
+    - read-aiida-config = activate_aiida.read_config:run
   noarch: python
   # skip: True  # [win] # TODO this doesn't work (overriden by noarch)
   script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed -vv "

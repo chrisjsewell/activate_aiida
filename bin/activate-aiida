@@ -217,7 +217,7 @@ activate_aiida () {
     # start aiida daemon
     if [[ -z `verdi -p $AIIDAPROFILE daemon status | grep "Daemon is running "` ]]; then
         echo -e "  Activating daemon for profile: $AIIDAPROFILE"
-        if [[ -z `verdi -p $AIIDAPROFILE daemon start | grep "You are not the daemon user!"` ]]; then
+        if [[ ! -z `verdi -p $AIIDAPROFILE daemon start | grep "You are not the daemon user!"` ]]; then
             verdi daemon configureuser 
             verdi -p $AIIDAPROFILE daemon start
         fi

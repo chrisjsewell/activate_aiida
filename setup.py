@@ -52,7 +52,8 @@ setup(
     packages=find_packages(),
     package_data={},
     scripts=[
-        "bin/activate-aiida"
+        "bin/activate-aiida",
+        "bin/deactivate-aiida"
     ],
     entry_points={
         'console_scripts': [
