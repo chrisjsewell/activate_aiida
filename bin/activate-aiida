@@ -1,0 +1,527 @@
+#!/usr/bin/env bash
+
+# for help
+# source script_name -h
+
+# this script initialises an aiida environment (created with conda) by:
+#    0. Reading the required variables from a yaml config file (by default .aiida_envs.yaml)
+#    1a. `conda activate env_name`
+#    1b. (optionally) activate required branches of github repos (`git -C path checkout branch`)
+#    2. `export PGDATA=/path/to/database`
+#       `pg_ctl -l postgres_env_{env_name}.log start`
+#    3. `rabbitmq-server -detached` for aiida_core >= v1.0.0
+#    4. `export AIIDA_PATH=path/containing/.aiida`
+#    5. `reentry scan -r aiida`
+#    6. `verdi -p profile_name daemon start`
+#    7. `verdi profile setdefault profile_name`
+#    8. setup terminal tab completion of verdi sub commands
+
+# The yaml file should look like this:
+#
+# conda_env: aiida_0_12_2_190302
+# aiida_version: 0.12
+# aiida_path: path/to/.aiida/
+# db_pgsql:
+#   path: path/to/aiidadb
+#   user: testuser
+#   user-password: password
+#   name: testdb
+#   port: 5432
+# db_aiida:
+#   path: path/to/aiidadb
+#   profile: testprofile
+#   email: email@hotmail.com
+#   first-name: chris
+#   last-name: sewell
+#   institution: imperial
+# import_nodes:
+#   - common_nodes.zip
+# git_branches:
+#   - path: path/to/repo
+#     branch: main
+
+if [ $_ == $0 ]; then
+    echo "this script must be sourced: source $(basename $0)"
+    exit
+fi
+
+print_help () {
+    usage="source $(basename ${BASH_SOURCE[0]}) [-h --help] [-p str] [-c] [-i]
+
+initialises an aiida environment (created with conda), via a yaml config file
+
+where:
+    -h --help  show this help text
+    -p --yamlpath set the path to the yaml file (default: aiida_environment.yaml)
+    -c --createdb if the database or aiida profile do not exist then create them
+    -i --import-nodes call 'verdi import' for import_nodes listed in yaml
+
+The pyyaml and jsonschema python packages are required, and the yaml file should look like this:
+
+conda_env: aiida_0_12_2_190302
+aiida_version: 0.12
+aiida_path: path/to/.aiida/
+db_pgsql:
+  path: path/to/aiidadb
+  user: testuser
+  user-password: password
+  name: testdb
+  port: 5432
+db_aiida:
+  path: path/to/aiidadb
+  profile: testprofile
+  email: email@hotmail.com
+  first-name: chris
+  last-name: sewell
+  institution: imperial
+import_nodes:
+  - common_nodes.zip
+git_branches:
+  - path: path/to/repo
+    branch: main
+
+"
+    echo "$usage"
+
+}
+
+read_args () {
+    
+    # set defaults
+    local env_yaml="aiida_environment.yaml"
+    local create_missing=false
+    local import_nodes=false
+
+    # read options (see https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash)
+    POSITIONAL=()
+    while [[ $# -gt 0 ]]
+    do
+    key="$1"
+
+    case $key in
+        -p|--yamlpath)
+        env_yaml="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        -i|--import-nodes)
+        import_nodes=true
+        shift # past argument
+        ;;
+        -c|--create)
+        create_missing=true
+        shift # past argument
+        ;;
+        *)    # unknown option
+        # POSITIONAL+=("$1") # save it in an array for later
+        shift # past argument
+        ;;
+    esac
+    done
+    # set -- "${POSITIONAL[@]}" # restore positional parameters
+
+    echo "$env_yaml,$create_missing,$import_nodes"
+
+}
+
+activate_aiida () {
+
+    if [[ $1 == "-h" ]] || [[ $1 == "--help" ]]; then
+        print_help
+        return
+    fi
+
+    local args=$(read_args "$@")
+    local env_yaml
+    local create_missing
+    local import_nodes
+    IFS=',' read -r yaml_file create_missing import_nodes <<< "$args"
+
+    # NB: if you are using the echo command, be sure to use the -e flag to allow backslash escapes.
+    local COLORRED='\033[0;31m'
+    local COLORORANGE='\033[0;33m'
+    local COLORGREEN='\033[0;32m'
+    local COLORNONE='\033[0m' # No Color
+
+    # --------------------------------------------------------------------------
+    # READ CONFIG FILE
+
+    echo -e "${COLORGREEN}- Reading variables from ${yaml_file}${COLORNONE}"
+
+    # TODO create temp files in more secure way
+    local yfile="__read_yaml_key.py"
+    cat <<EOF > $yfile
+import sys, os
+try:
+    import yaml
+except ImportError:
+    sys.stderr.write("${COLORRED}ERROR: pyyaml not installed (pip install pyyaml) ${COLORNONE}\n")
+    sys.exit(1)
+try:
+    import jsonschema
+except ImportError:
+    sys.stderr.write("${COLORRED}ERROR: jsonschema not installed (pip install jsonschema) ${COLORNONE}\n")
+    sys.exit(1)
+fpath = sys.argv[1]
+if not os.path.exists(fpath):
+    sys.stderr.write("${COLORRED}ERROR: could not find path {}${COLORNONE}\n".format(fpath))
+    sys.exit(1)
+with open(fpath) as f:
+    config = yaml.load(f)
+
+CONFIG_SCHEMA = {
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "conda_env": {
+      "type": "string"
+    },
+    "aiida_version": {
+      "type": "number"
+    },
+    "db_pgsql": {
+      "type": "object",
+      "properties": {
+        "user-password": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "user-password",
+        "path",
+        "user",
+        "port",
+        "name"
+      ]
+    },
+    "aiida_path": {
+      "type": "string"
+    },
+    "db_aiida": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "type": "string"
+        },
+        "last-name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "first-name": {
+          "type": "string"
+        },
+        "institution": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile",
+        "last-name",
+        "path",
+        "first-name",
+        "institution",
+        "email"
+      ]
+    },
+    "import_nodes": {
+        "type": "array",
+        "items": {
+            "type": "string"
+        }
+    },
+    "git_branches": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "required": [
+                "path",
+                "branch"
+            ],
+            "properties": {
+                "path": {"type": "string"},
+                "branch": {"type": "string"},
+            }
+        }
+    }
+  },
+  "required": [
+    "conda_env",
+    "aiida_version",
+    "db_pgsql",
+    "aiida_path",
+    "db_aiida"
+  ]
+}
+
+try:
+    jsonschema.validate(
+                config,
+                CONFIG_SCHEMA
+            )
+except jsonschema.ValidationError as err:
+    sys.stderr.write("$COLORRED{0}$COLORNONE\n".format(err))
+    sys.exit(1)
+
+outstring = []
+
+outstring.append(config["conda_env"])
+outstring.append(config["aiida_path"])
+
+outstring.append(config["db_pgsql"]["path"])
+outstring.append(config["db_pgsql"]["user"])
+outstring.append(config["db_pgsql"]["user-password"])
+outstring.append(config["db_pgsql"]["name"])
+outstring.append(config["db_pgsql"]["port"])
+
+outstring.append(config["db_aiida"]["path"])
+outstring.append(config["db_aiida"]["profile"])
+outstring.append(config["db_aiida"]["email"])
+outstring.append(config["db_aiida"]["first-name"])
+outstring.append(config["db_aiida"]["last-name"])
+outstring.append(config["db_aiida"]["institution"])
+
+outstring.append("::".join(config.get("import_nodes", [])))
+
+gitcommands = []
+for repo in config.get("git_branches", []):
+    gitcommands.append(
+        "git -C {0} checkout {1}".format(repo["path"],repo["branch"]))
+outstring.append("::".join(gitcommands))
+
+sys.stdout.write(",".join([str(o) for o in outstring]))
+EOF
+    local output1=$(python $yfile "${yaml_file}" $yaml_key)
+    rm -f $yfile
+
+    if [[ -z $output1 ]]; then
+        echo -e "${COLORRED}QUITTING PROCESS${COLORNONE}"
+        return
+    fi
+
+    # comma delimited
+    local outarray
+    IFS=',' read -ra outarray <<< "$output1"
+   # --------------------------------------------------------------------------
+
+
+    # --------------------------------------------------------------------------
+    # SETUP CONDA ENVIRONMENT
+    local ENV=${outarray[0]}
+    echo -e "${COLORGREEN}- Activating Conda environment: '$ENV'${COLORNONE}"
+    if [[ $PATH == *"conda/envs/$ENV/bin"* ]]; then
+        echo -e "  Conda env '$ENV' already activated."
+    else
+        conda deactivate
+        conda activate $ENV
+    fi
+    # --------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    # SETUP GITHUB BRANCHES
+    local GITBRANCHES=${outarray[14]}
+    if [ ! -z "$GITBRANCHES" ] ;then
+        echo -e "${COLORGREEN}- Activating Github Branches:${COLORNONE}"
+        local gitarray
+        IFS='::' read -ra gitarray <<< "$GITBRANCHES"
+        for gitcommand in "${gitarray[@]}"; do
+            if [ ! -z "$gitcommand" ] ;then
+                echo "  $gitcommand"
+                eval "$gitcommand" >/dev/null
+            fi
+        done
+    fi
+    # --------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    # SETUP SQL SERVER
+
+    echo -e "${COLORGREEN}- Setting Up SQL Database${COLORNONE}"
+
+    local SQLPATH=${outarray[2]}
+    local SQLUSER=${outarray[3]}
+    local SQLUSERPWRD=${outarray[4]}
+    local SQLNAME=${outarray[5]}
+    local SQLPORT=${outarray[6]}
+
+    # set database path
+    echo -e "  PGDATA='${SQLPATH}'"
+    export PGDATA="$SQLPATH"
+
+    # ensure the database system exists
+    initdb &>/dev/null
+
+    # activate server
+    if [[ -z `pg_ctl -D $SQLPATH status | grep "server is running"` ]]; then
+        # close any other active server (from: https://askubuntu.com/questions/547434/how-to-nicely-stop-all-postgres-processes)
+        psql -Xtc 'show data_directory' &>/dev/null && pg_ctl -D $(psql -Xtc 'show data_directory') stop &>/dev/null
+        pkill postgres
+        echo -e "${COLORGREEN}- Activating Postgres server: $SQLPATH on port $SQLPORT${COLORNONE}"
+        pg_ctl -D $SQLPATH start -o "-F -p $SQLPORT" -l "postgres_env_$ENV.log"
+        echo -e "${COLORORANGE}  Logging Postgres server to: postgres_env_$ENV.log${COLORNONE}"
+    else
+        echo -e "  Postgres server already running: $SQLPATH"
+    fi
+
+    # ebsure the user db exists (see https://stackoverflow.com/a/17936043/5033292)
+    createdb &>/dev/null
+
+    # test if the user already exists
+    if [ "$( psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='$SQLUSER'" )" = '1' ]
+    then
+        echo "  User $SQLUSER already exists"
+    else
+        if [ ${create_missing} == true ] ;then
+            echo -e "${COLORORANGE}Creating User $SQLUSER${COLORNONE}"
+            createuser $SQLUSER
+        else
+            echo -e "${COLORRED} User $SQLUSER does not exist (and -c flag not set).$COLORNONE"
+            return
+        fi
+    fi    
+
+    # test if the database already exists
+    if [ "$( psql -tAc "SELECT 1 FROM pg_database WHERE datname='$SQLNAME'" )" = '1' ]
+    then
+        echo "  Database $SQLNAME already exists"
+    else
+        if [ ${create_missing} == true ] ;then
+            echo -e "${COLORORANGE}Creating Database $SQLNAME${COLORNONE}"
+            createdb $SQLNAME --owner=$SQLUSER
+            psql --dbname=$SQLNAME -c "alter user $SQLUSER with encrypted password '$SQLUSERPWRD';"
+            psql --dbname=$SQLNAME -c "grant all privileges on database $SQLNAME to $SQLUSER;"
+        else
+            echo -e "${COLORRED} Database $SQLNAME does not exist (and -c flag not set).$COLORNONE"
+            return
+        fi
+    fi    
+    # --------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    # START RabbitMQ (aiida_core >= v1.0.0)
+    echo -e "${COLORGREEN}- Starting RabbitMQ${COLORNONE}"
+
+    # RabbitMQ is a message queue application that allows AiiDA to send messages to the daemon
+    # it should start automatically (after system reboot), but just in case
+    if hash rabbitmq-server 2>/dev/null; then
+        # TODO check if its already running. use `rabbitmqctl status`, but what to grep for?
+        echo -e "${COLORGREEN}- Ensuring rabbitmq is running${COLORNONE}"
+        rabbitmq-server -detached >/dev/null 2>&1
+    else
+        echo -e "${COLORORANGE}  Warning: rabbitmq-server not available (required for aiida >= v1.0.0).${COLORNONE}"
+        echo -e "${COLORORANGE}  To install: conda install rabbitmq-server${COLORNONE}"
+    fi
+    # --------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    # AIIDA DATABASE SETUP
+
+    echo -e "${COLORGREEN}- Setting Up AiiDa Database${COLORNONE}"
+
+    local AIIDAPATH=${outarray[1]}
+    local AIIDADBPATH=${outarray[7]}
+    local AIIDAPROFILE=${outarray[8]}
+    local AIIDAEMAIL=${outarray[9]}
+    local AIIDAFNAME=${outarray[10]}
+    local AIIDALNAME=${outarray[11]}
+    local AIIDAINSTITUTION=${outarray[12]}
+
+    local new_profile=false
+
+    # use correct .aiida path
+    echo -e "  AIIDA_PATH='${AIIDAPATH}'"
+    export AIIDA_PATH="${AIIDAPATH}"
+
+    # ensure the .aiida dir exists
+    mkdir -p "$AIIDAPATH/.aiida"
+
+    # check if profile already exists
+    if [[ -z `verdi profile list | grep -w $AIIDAPROFILE` ]]; then
+        if [ ${create_missing} == true ] ;then
+            verdi quicksetup --non-interactive --profile="$AIIDAPROFILE" --set-default --email="$AIIDAEMAIL" --first-name="$AIIDAFNAME" --last-name="$AIIDALNAME" --institution="$AIIDAINSTITUTION" --backend="django" --db-port $SQLPORT --db-user="$SQLUSER" --db-user-pw="$SQLUSERPWRD" --db-name="$SQLNAME" --repo="$AIIDADBPATH"
+            new_profile=true
+        else
+            echo -e "${COLORRED}  Profile: $AIIDAPROFILE, was not found (and -c flag not set).$COLORNONE"
+            echo "  available profiles:"
+            verdi profile list
+            return
+        fi
+    fi
+    # --------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    # START AIIDA
+    echo -e "${COLORGREEN}- Starting AiiDA${COLORNONE}"
+
+    # ensure plugins are up to date
+    echo -e "  Rescanning aiida plugins"
+    reentry scan -r aiida
+
+    # start aiida daemon
+    if [[ -z `verdi -p $AIIDAPROFILE daemon status | grep "Daemon is running "` ]]; then
+        echo -e "  Activating daemon for profile: $AIIDAPROFILE"
+        if [[ -z `verdi -p $AIIDAPROFILE daemon start | grep "You are not the daemon user!"` ]]; then
+            verdi daemon configureuser 
+            verdi -p $AIIDAPROFILE daemon start
+        fi
+    else
+    #    echo -e "${COLORORANGE}Daemon already running for profile: $PROFILE${COLORNONE}"
+        echo -e "  Restarting daemon for profile: $AIIDAPROFILE"
+        verdi -p $AIIDAPROFILE daemon restart
+    fi
+
+    echo -e "  Setting default profile: $AIIDAPROFILE"
+    # different for v0.12 and v1
+    verdi profile setdefault $AIIDAPROFILE &>/dev/null || verdi profile setdefault verdi $AIIDAPROFILE
+
+    # setup terminal tab completion of verdi sub commands
+    # `verdi completioncommand` only for aiida_core < v1.0.0
+    echo -e "  Activating verdi tab completion"
+    local compcommand=false
+    verdi completioncommand >/dev/null 2>&1 && compcommand=true
+    if [ $compcommand == true ]; then
+        # we are in aiida <v1
+        verdi completioncommand > __run_completioncommand.sh
+        source __run_completioncommand.sh
+        rm -f __run_completioncommand.sh
+    else
+        # we are in aiida >=v1
+        eval "$(_VERDI_COMPLETE=source verdi)"
+    fi
+
+    # --------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    # IMPORT NODES    
+    local IMPORTNODES=${outarray[13]}
+    if [ ${import_nodes} == true ] && [ ! -z "$IMPORTNODES" ] ;then
+        echo -e "${COLORGREEN}- Importing Nodes:${COLORNONE}"
+        local nodearray
+        IFS='::' read -ra nodearray <<< "$IMPORTNODES"
+        for npath in "${nodearray[@]}"; do
+            if [ ! -z "$npath" ] ;then
+                echo "  $npath"
+                verdi import $npath
+            fi
+        done
+    fi
+    # --------------------------------------------------------------------------
+}
+
+activate_aiida "$@"
