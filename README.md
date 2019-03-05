@@ -71,6 +71,7 @@ Then run:
 ```console
 >> conda env create --file=conda_environment.yaml
 >> conda activate aiida_0_12_2_activate
+>> source activate-aiida --help
 >> source activate-aiida -c -i aiida_environment.yaml
 >> deactivate-aiida
 ```
