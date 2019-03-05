@@ -4,7 +4,7 @@
 """Setup for activate-aiida."""
 
 import io
-# from importlib import import_module
+from importlib import import_module
 from setuptools import setup, find_packages
 
 with io.open('README.md') as readme:
@@ -12,13 +12,16 @@ with io.open('README.md') as readme:
 
 setup(
     name='activate-aiida',
-    version="0.1.0",
+    version=import_module("activate_aiida").__version__,
     description=(
         'a package to activate an aiida environment, from a yaml config file'
-        ),
+    ),
     long_description=readme_content,
     long_description_content_type='text/markdown',
-    install_requires=[],
+    install_requires=[
+        "ruamel.yaml",
+        "jsonschema"
+    ],
     license='MIT',
     author='Chris Sewell',
     author_email='chrisj_sewell@hotmail.com',
@@ -26,11 +29,11 @@ setup(
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
-        'Environment :: Web Environment',
         'Intended Audience :: End Users/Desktop',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
+        'Operating System :: OSX',
+        'Operating System :: Linux',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
@@ -50,5 +53,11 @@ setup(
     package_data={},
     scripts=[
         "bin/activate-aiida"
-    ]
+    ],
+    entry_points={
+        'console_scripts': [
+            'read-aiida-args = activate_aiida.parse_args:run',
+            'read-aiida-config = activate_aiida.read_config:run'
+        ]
+    }
 )

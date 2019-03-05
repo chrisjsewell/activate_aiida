@@ -5,49 +5,17 @@ import os
 _COLORRED = '\033[0;31m'
 _COLORNONE = '\033[0m'
 
-
-def run(sys_args=None):
-    try:
-        import yaml
-    except ImportError:
-        sys.stderr.write(
-            "{COLORRED}ERROR: pyyaml not installed "
-            "(pip install pyyaml){COLORNONE}\n".format(
-                COLORRED=_COLORRED, COLORNONE=_COLORNONE))
-        sys.exit(1)
-    try:
-        import jsonschema
-    except ImportError:
-        sys.stderr.write(
-            "{COLORRED}ERROR: jsonschema not installed "
-            "(pip install jsonschema){COLORNONE}\n".format(
-                COLORRED=_COLORRED, COLORNONE=_COLORNONE))
-        sys.exit(1)
-
-    if sys_args is None:
-        sys_args = sys.argv[1:]
-
-    fpath = sys_args[0]
-
-    if not os.path.exists(fpath):
-        sys.stderr.write(
-            "{COLORRED}ERROR: could not find path {fpath}{COLORNONE}\n"
-            "".format(COLORRED=_COLORRED, COLORNONE=_COLORNONE, fpath=fpath))
-        sys.exit(1)
-    with open(fpath) as f:
-        config = yaml.load(f)
-
-    CONFIG_SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "type": "object",
-        "properties": {
+_CONFIG_SCHEMA = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
             "conda_env": {
                 "type": "string"
             },
-            "aiida_version": {
+        "aiida_version": {
                 "type": "number"
-            },
-            "db_pgsql": {
+                },
+        "db_pgsql": {
                 "type": "object",
                 "properties": {
                     "user-password": {
@@ -73,11 +41,11 @@ def run(sys_args=None):
                     "port",
                     "name"
                 ]
-            },
-            "aiida_path": {
+                },
+        "aiida_path": {
                 "type": "string"
-            },
-            "db_aiida": {
+                },
+        "db_aiida": {
                 "type": "object",
                 "properties": {
                     "profile": {
@@ -107,14 +75,14 @@ def run(sys_args=None):
                     "institution",
                     "email"
                 ]
-            },
-            "import_nodes": {
+                },
+        "import_nodes": {
                 "type": "array",
                 "items": {
                     "type": "string"
                 }
-            },
-            "git_branches": {
+                },
+        "git_branches": {
                 "type": "array",
                 "items": {
                     "type": "object",
@@ -127,21 +95,54 @@ def run(sys_args=None):
                         "branch": {"type": "string"},
                     }
                 }
-            }
-        },
-        "required": [
-            "conda_env",
-            "aiida_version",
-            "db_pgsql",
-            "aiida_path",
-            "db_aiida"
-        ]
-    }
+                }
+    },
+    "required": [
+        "conda_env",
+        "aiida_version",
+        "db_pgsql",
+        "aiida_path",
+        "db_aiida"
+    ]
+}
+
+
+def run(sys_args=None):
+    try:
+        from ruamel.yaml import YAML
+    except ImportError:
+        sys.stderr.write(
+            "{COLORRED}ERROR: ruamel.yaml not installed "
+            "(pip install ruamel.yaml){COLORNONE}\n".format(
+                COLORRED=_COLORRED, COLORNONE=_COLORNONE))
+        sys.exit(1)
+    try:
+        import jsonschema
+    except ImportError:
+        sys.stderr.write(
+            "{COLORRED}ERROR: jsonschema not installed "
+            "(pip install jsonschema){COLORNONE}\n".format(
+                COLORRED=_COLORRED, COLORNONE=_COLORNONE))
+        sys.exit(1)
+
+    if sys_args is None:
+        sys_args = sys.argv[1:]
+
+    fpath = sys_args[0]
+
+    if not os.path.exists(fpath):
+        sys.stderr.write(
+            "{COLORRED}ERROR: could not find path {fpath}{COLORNONE}\n"
+            "".format(COLORRED=_COLORRED, COLORNONE=_COLORNONE, fpath=fpath))
+        sys.exit(1)
+    with open(fpath) as f:
+        yaml = YAML(typ='safe')
+        config = yaml.load(f)
 
     try:
         jsonschema.validate(
             config,
-            CONFIG_SCHEMA
+            _CONFIG_SCHEMA
         )
     except jsonschema.ValidationError as error:
         sys.stderr.write("{COLORRED}{error}{COLORNONE}\n".format(
