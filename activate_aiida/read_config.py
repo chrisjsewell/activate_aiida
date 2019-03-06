@@ -13,7 +13,7 @@ _CONFIG_SCHEMA = {
                 "type": "string"
             },
         "aiida_version": {
-                "type": "number"
+                "type": "string"
                 },
         "db_pgsql": {
                 "type": "object",

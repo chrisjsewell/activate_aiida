@@ -29,14 +29,16 @@ activate_aiida () {
     fi
   
     local yaml_file
+    local activate_conda
     local create_missing
     local import_nodes
-    IFS=',' read -r yaml_file create_missing import_nodes <<< "$args"
+    IFS=',' read -r yaml_file activate_conda create_missing import_nodes <<< "$args"
 
+    activate_conda=$(boolean "$activate_conda")
     create_missing=$(boolean "$create_missing")
     import_nodes=$(boolean "$import_nodes")
 
-    echo "parsed args: -c $create_missing -i $import_nodes $yaml_file"
+    echo "parsed args: -ac $activate_conda -c $create_missing -i $import_nodes $yaml_file"
     
     # NB: if you are using the echo command, be sure to use the -e flag to allow backslash escapes.
     local COLORRED='\033[0;31m'
@@ -65,12 +67,14 @@ activate_aiida () {
     # --------------------------------------------------------------------------
     # SETUP CONDA ENVIRONMENT
     local ENV=${outarray[0]}
-    echo -e "${COLORGREEN}- Activating Conda environment: '$ENV'${COLORNONE}"
-    if [[ $PATH == *"conda/envs/$ENV/bin"* ]]; then
-        echo -e "  Conda env '$ENV' already activated."
-    else
-        conda deactivate
-        conda activate $ENV
+    if [ ${activate_conda} == true ] ;then
+        echo -e "${COLORGREEN}- Activating Conda environment: '$ENV'${COLORNONE}"
+        if [[ $PATH == *"conda/envs/$ENV/bin"* ]]; then
+            echo -e "  Conda env '$ENV' already activated."
+        else
+            conda deactivate
+            conda activate $ENV
+        fi
     fi
     # --------------------------------------------------------------------------
 

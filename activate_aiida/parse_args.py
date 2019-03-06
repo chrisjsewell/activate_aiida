@@ -47,6 +47,9 @@ def run(sys_args=None):
     parser.add_argument("filepath", type=str, nargs='?',
                         help="path to config file",
                         metavar='filepath', default="aiida_environment.yaml")
+    parser.add_argument("-ac", "--activate-conda", action="store_true",
+                        help=('activate the conda environment,'
+                              ' set in the config file'))
     parser.add_argument("-c", "--create-db", action="store_true",
                         help=('if the database or aiida profile '
                               'do not exist then create them'))
@@ -58,5 +61,6 @@ def run(sys_args=None):
     options = vars(args)
     sys.stdout.write("{},{},{}".format(
         options["filepath"],
+        options["activate-conda"],
         options["create_db"],
         options["import_nodes"]))
