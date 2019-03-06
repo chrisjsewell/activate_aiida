@@ -12,7 +12,7 @@ source:
   #  `openssl sha256 <file name>`.
   # You may need the openssl package, available on conda-forge
   #  `conda install openssl -c conda-forge`
-  sha256: 7e037183d2c4627d04241302f6f1346c7faebd8694689fb2a66e45f6623d23b5
+  sha256: bbb6cae9b98d9a1f30e1ac462131a9bc016ec95e9797b4f378f2a51ba03df298
 
 build:
   number: 0

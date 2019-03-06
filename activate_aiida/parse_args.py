@@ -61,6 +61,6 @@ def run(sys_args=None):
     options = vars(args)
     sys.stdout.write("{},{},{}".format(
         options["filepath"],
-        options["activate-conda"],
+        options["activate_conda"],
         options["create_db"],
         options["import_nodes"]))
