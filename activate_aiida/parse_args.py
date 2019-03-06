@@ -59,7 +59,7 @@ def run(sys_args=None):
 
     args = parser.parse_args(sys_args)
     options = vars(args)
-    sys.stdout.write("{},{},{}".format(
+    sys.stdout.write("{0},{1},{2},{3}".format(
         options["filepath"],
         options["activate_conda"],
         options["create_db"],

@@ -12,10 +12,10 @@ source:
   #  `openssl sha256 <file name>`.
   # You may need the openssl package, available on conda-forge
   #  `conda install openssl -c conda-forge`
-  sha256: bbb6cae9b98d9a1f30e1ac462131a9bc016ec95e9797b4f378f2a51ba03df298
+  sha256: 345acb580c6738e063c1b5e13daf27630e91ac633dc87c617c05251a3f31a813
 
 build:
-  number: 0
+  number: 2
   entry_points:
     - read-aiida-args = activate_aiida.parse_args:run
     - read-aiida-config = activate_aiida.read_config:run
