@@ -118,8 +118,8 @@ activate_aiida () {
         psql -Xtc 'show data_directory' &>/dev/null && pg_ctl -D $(psql -Xtc 'show data_directory') stop &>/dev/null
         pkill postgres
         echo -e "${COLORGREEN}- Activating Postgres server: $SQLPATH on port $SQLPORT${COLORNONE}"
-        pg_ctl -D $SQLPATH start -o "-F -p $SQLPORT" -l "postgres_env_$ENV.log"
-        echo -e "${COLORORANGE}  Logging Postgres server to: postgres_env_$ENV.log${COLORNONE}"
+        pg_ctl -D $SQLPATH start -o "-F -p $SQLPORT" -l "$SQLPATH/postgres_env_$ENV.log"
+        echo -e "${COLORORANGE}  Logging Postgres server to: $SQLPATH/postgres_env_$ENV.log${COLORNONE}"
     else
         echo -e "  Postgres server already running: $SQLPATH"
     fi
@@ -218,6 +218,11 @@ activate_aiida () {
     echo -e "  Rescanning aiida plugins"
     reentry scan -r aiida
 
+    echo -e "  Setting default profile: $AIIDAPROFILE"
+    # different for v0.12 and v1
+    verdi profile setdefault $AIIDAPROFILE &>/dev/null || verdi profile setdefault verdi $AIIDAPROFILE
+    verdi profile setdefault $AIIDAPROFILE &>/dev/null || verdi profile setdefault daemon $AIIDAPROFILE
+
     # start aiida daemon
     if [[ -z `verdi -p $AIIDAPROFILE daemon status | grep "Daemon is running "` ]]; then
         echo -e "  Activating daemon for profile: $AIIDAPROFILE"
@@ -230,10 +235,6 @@ activate_aiida () {
         echo -e "  Restarting daemon for profile: $AIIDAPROFILE"
         verdi -p $AIIDAPROFILE daemon restart
     fi
-
-    echo -e "  Setting default profile: $AIIDAPROFILE"
-    # different for v0.12 and v1
-    verdi profile setdefault $AIIDAPROFILE &>/dev/null || verdi profile setdefault verdi $AIIDAPROFILE
 
     # setup terminal tab completion of verdi sub commands
     # `verdi completioncommand` only for aiida_core < v1.0.0
