@@ -169,8 +169,9 @@ activate_aiida () {
         echo -e "${COLORGREEN}- Ensuring rabbitmq is running${COLORNONE}"
         rabbitmq-server -detached >/dev/null 2>&1
     else
-        echo -e "${COLORORANGE}  Warning: rabbitmq-server not available (required for aiida >= v1.0.0).${COLORNONE}"
-        echo -e "${COLORORANGE}  To install: conda install rabbitmq-server${COLORNONE}"
+        echo -e "${COLORRED}  Warning: rabbitmq-server not available.${COLORNONE}"
+        echo -e "${COLORRED}  To install: conda install rabbitmq-server${COLORNONE}"
+        return
     fi
     # --------------------------------------------------------------------------
 
@@ -199,7 +200,7 @@ activate_aiida () {
     # check if profile already exists
     if [[ -z `verdi profile list | grep -w $AIIDAPROFILE` ]]; then
         if [ ${create_missing} == true ] ;then
-            verdi quicksetup --non-interactive --profile="$AIIDAPROFILE" --set-default --email="$AIIDAEMAIL" --first-name="$AIIDAFNAME" --last-name="$AIIDALNAME" --institution="$AIIDAINSTITUTION" --backend="django" --db-port $SQLPORT --db-user="$SQLUSER" --db-user-pw="$SQLUSERPWRD" --db-name="$SQLNAME" --repo="$AIIDADBPATH"
+            verdi quicksetup --non-interactive --profile "$AIIDAPROFILE" --email="$AIIDAEMAIL" --first-name="$AIIDAFNAME" --last-name="$AIIDALNAME" --institution="$AIIDAINSTITUTION" --db-backend="django" --db-port $SQLPORT --db-username="$SQLUSER" --db-password="$SQLUSERPWRD" --db-name="$SQLNAME" --repository="$AIIDADBPATH"
             new_profile=true
         else
             echo -e "${COLORRED}  Profile: $AIIDAPROFILE, was not found (and -c flag not set).$COLORNONE"
@@ -219,9 +220,7 @@ activate_aiida () {
     reentry scan -r aiida
 
     echo -e "  Setting default profile: $AIIDAPROFILE"
-    # different for v0.12 and v1
-    verdi profile setdefault $AIIDAPROFILE &>/dev/null || verdi profile setdefault verdi $AIIDAPROFILE
-    verdi profile setdefault $AIIDAPROFILE &>/dev/null || verdi profile setdefault daemon $AIIDAPROFILE
+    verdi profile setdefault $AIIDAPROFILE
 
     # start aiida daemon
     if [[ -z `verdi -p $AIIDAPROFILE daemon status | grep "Daemon is running "` ]]; then
@@ -239,17 +238,7 @@ activate_aiida () {
     # setup terminal tab completion of verdi sub commands
     # `verdi completioncommand` only for aiida_core < v1.0.0
     echo -e "  Activating verdi tab completion"
-    local compcommand=false
-    verdi completioncommand >/dev/null 2>&1 && compcommand=true
-    if [ $compcommand == true ]; then
-        # we are in aiida <v1
-        verdi completioncommand > __run_completioncommand.sh
-        source __run_completioncommand.sh
-        rm -f __run_completioncommand.sh
-    else
-        # we are in aiida >=v1
-        eval "$(_VERDI_COMPLETE=source verdi)"
-    fi
+    eval "$(_VERDI_COMPLETE=source verdi)"
 
     # --------------------------------------------------------------------------
 
