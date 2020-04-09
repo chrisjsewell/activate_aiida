@@ -1,7 +1,8 @@
 {
-    "editor.rulers": [80, 120],
-    "python.pythonPath": "/anaconda/envs/lsr/bin/python",
+    "editor.rulers": [88],
+    "python.pythonPath": "/home/csewell/miniconda3/envs/aiida-dev/bin/python",
     "python.linting.pylintEnabled": false,
     "python.linting.flake8Enabled": true,
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+    "python.formatting.provider": "black"
 }

@@ -1,2 +1,0 @@
-verdi daemon stop
-pg_ctl stop
