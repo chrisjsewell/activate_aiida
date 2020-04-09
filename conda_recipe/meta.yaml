@@ -30,8 +30,6 @@ requirements:
     - setuptools
   run:
     - python
-    - ruamel.yaml
-    - jsonschema
 
 test:
   imports:
@@ -40,7 +38,7 @@ test:
     - activate_aiida.read_config
   commands:
     - read-aiida-config --test
-    - source activate-aiida --help
+    - source aiida-activate --help
 
 about:
   home: https://github.com/chrisjsewell/activate_aiida
