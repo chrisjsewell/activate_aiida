@@ -1,35 +1,29 @@
 {% set name = "activate-aiida" %}
-{% set version = "0.2.5" %}
+{% set version = "0.3.0" %}
 
 package:
   name: "{{ name|lower }}"
   version: "{{ version }}"
 
 source:
-  # created by `python setup.py sdist`
-  url: https://github.com/chrisjsewell/activate_aiida/releases/download/{{ version }}/{{ version }}.tar.gz
-  # sha256 is the prefered checksum -- you can get it for a file with:
-  #  `openssl sha256 <file name>`.
-  # You may need the openssl package, available on conda-forge
-  #  `conda install openssl -c conda-forge`
-  sha256: 345acb580c6738e063c1b5e13daf27630e91ac633dc87c617c05251a3f31a813
+  url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
+  sha256: ee79c682306188e5e8cd7cc01aada7f89de2191c92e3e089424a90510c1eebec
 
 build:
-  number: 2
+  number: 0
   entry_points:
     - read-aiida-args = activate_aiida.parse_args:run
     - read-aiida-config = activate_aiida.read_config:run
   noarch: python
-  # skip: True  # [win] # TODO this doesn't work (overriden by noarch)
-  script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed -vv "
+  script: "{{ PYTHON }} -m pip install . -vv"
 
 requirements:
   host:
     - pip
-    - python
-    - setuptools
+    - python >=3
   run:
-    - python
+    - python >=3
+    - pyyaml
 
 test:
   imports:

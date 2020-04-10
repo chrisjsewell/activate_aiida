@@ -1,3 +1,4 @@
+[![PyPI version](https://badge.fury.io/py/activate-aiida.svg)](https://badge.fury.io/py/activate-aiida)
 [![Anaconda-Server Badge](https://anaconda.org/cjs14/activate-aiida/badges/version.svg)](https://anaconda.org/cjs14/activate-aiida)
 
 # activate-aiida
